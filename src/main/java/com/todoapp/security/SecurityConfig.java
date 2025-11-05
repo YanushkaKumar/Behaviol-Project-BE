@@ -40,6 +40,7 @@ public class SecurityConfig {
             return configuration;
         }));
 
+
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth

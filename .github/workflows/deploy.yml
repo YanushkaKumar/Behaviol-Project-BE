@@ -41,9 +41,15 @@ jobs:
       # ✅ Copy jar to VM
       - name: Copy JAR to VM
         run: |
-          gcloud compute scp target/*.jar \
-          ${{ secrets.GCP_VM_NAME }}:/opt/myapp/ \
-          --zone=${{ secrets.GCP_VM_ZONE }}
+          # Upload jar to tmp directory in VM
+            gcloud compute scp target/*.jar \
+            ${{ secrets.GCP_VM_NAME }}:~/ \
+            --zone=${{ secrets.GCP_VM_ZONE }}
+            
+            # Move with sudo & restart service
+            gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+            --zone=${{ secrets.GCP_VM_ZONE }} \
+            --command="sudo mv ~/todo-backend-1.0.0.jar /opt/myapp/todo-backend-1.0.0.jar && sudo systemctl restart todo-backend.service"
 
       # ✅ Restart Spring Boot service on VM
       - name: Restart Backend Service

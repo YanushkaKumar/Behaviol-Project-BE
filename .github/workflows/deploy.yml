@@ -1,0 +1,46 @@
+name: Deploy to GCP VM via Service Account
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Spring Boot App
+        run: mvn clean package -DskipTests
+
+      - name: Install gcloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Verify gcloud auth
+        run: gcloud auth list
+
+      - name: Copy JAR to VM
+        run: |
+          gcloud compute scp target/*.jar \
+          ${{ secrets.GCP_VM_NAME }}:/opt/myapp/ \
+          --zone=${{ secrets.GCP_VM_ZONE }} \
+          --project=${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Restart Backend Service
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+          --zone=${{ secrets.GCP_VM_ZONE }} \
+          --command="sudo systemctl restart todo-backend.service" \
+          --project=${{ secrets.GCP_PROJECT_ID }}

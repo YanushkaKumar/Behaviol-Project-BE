@@ -60,15 +60,6 @@ jobs:
     if: github.ref == 'refs/heads/gke-release'
     runs-on: ubuntu-latest
 
-    env:
-      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
-      GKE_ZONE: ${{ secrets.GKE_ZONE }}
-      REGION: ${{ secrets.GCP_REGION }}
-      REPO_NAME: ${{ secrets.ARTIFACT_REPO_NAME }}
-      IMAGE_NAME: todo-backend
-      NAMESPACE: todo-backend
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -94,27 +85,27 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
       - name: Build Docker Image
         run: |
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
-          docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+          docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} .
+          docker tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} \
+            us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:latest
 
       - name: Push Docker Image to Artifact Registry
         run: |
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }}
+          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:latest
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
 
       - name: Get GKE Credentials
         run: |
-          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
-            --zone=${{ env.GKE_ZONE }} \
-            --project=${{ env.PROJECT_ID }}
+          gcloud container clusters get-credentials todo-app-yanushka \
+            --zone=${{ secrets.GKE_ZONE }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
 
       - name: Verify kubectl connection
         run: |
@@ -124,26 +115,26 @@ jobs:
       - name: Deploy to GKE
         run: |
           kubectl set image deployment/todo-backend \
-            todo-backend=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -n ${{ env.NAMESPACE }}
+            todo-backend=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} \
+            -n todo-backend
 
       - name: Wait for Rollout to Complete
         run: |
-          kubectl rollout status deployment/todo-backend -n ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/todo-backend -n todo-backend
 
       - name: Verify Deployment
         run: |
           echo "=== Pods Status ==="
-          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get pods -n todo-backend
           echo ""
           echo "=== Service Status ==="
-          kubectl get svc -n ${{ env.NAMESPACE }}
+          kubectl get svc -n todo-backend
           echo ""
           echo "=== Deployment Info ==="
-          kubectl describe deployment todo-backend -n ${{ env.NAMESPACE }}
+          kubectl describe deployment todo-backend -n todo-backend
 
       - name: Get Load Balancer IP
         run: |
           echo "=== Load Balancer External IP ==="
-          kubectl get service todo-backend-service -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+          kubectl get service todo-backend-service -n todo-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
           echo ""

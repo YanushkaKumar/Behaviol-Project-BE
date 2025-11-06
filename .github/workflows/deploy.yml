@@ -44,9 +44,15 @@ jobs:
             ${{ secrets.GCP_VM_NAME }}:~/ \
             --zone=${{ secrets.GCP_VM_ZONE }}
 
-          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
-            --zone=${{ secrets.GCP_VM_ZONE }} \
-            --command="sudo mv ~/todo-backend-1.0.0.jar /opt/myapp/todo-backend-1.0.0.jar && sudo systemctl restart todo-backend.service"
+          - name: Copy JAR to VM and Restart Service
+  run: |
+    gcloud compute scp target/*.jar \
+      ${{ secrets.GCP_VM_NAME }}:~/ \
+      --zone=${{ secrets.GCP_VM_ZONE }}
+
+    gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+      --zone=${{ secrets.GCP_VM_ZONE }} \
+      --command="sudo mv ~/$(ls ~/ | grep .jar) /opt/myapp/todo-backend.jar && sudo systemctl restart todo-backend.service"
 
   # ======================================================
   # ☸️ GKE DEPLOYMENT (Kubernetes)

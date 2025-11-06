@@ -10,7 +10,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -44,7 +43,7 @@ public class TaskService {
         task.setDescription(request.getDescription());
         task.setPriority(request.getPriority() != null ? request.getPriority() : "medium");
         task.setTags(request.getTags());
-        task.setDueDate(LocalDate.from(request.getDueDate()));
+        task.setDueDate(request.getDueDate());
         task.setCompleted(false);
         task.setArchived(false);
         task.setCreatedAt(Instant.now());
@@ -84,7 +83,7 @@ public class TaskService {
         }
 
         if (request.getDueDate() != null) {
-            task.setDueDate(LocalDate.from(request.getDueDate()));
+            task.setDueDate(request.getDueDate());
         }
 
         if (request.getCompleted() != null) {

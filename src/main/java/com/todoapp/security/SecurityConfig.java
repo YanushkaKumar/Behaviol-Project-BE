@@ -35,8 +35,7 @@ public class SecurityConfig {
             configuration.setAllowedOriginPatterns(List.of(
                     "http://localhost:3000",
                     "http://34.136.176.12",
-                    "https://34.136.176.12"
-                    ,
+                    "https://34.136.176.12",
                     "*"
             ));
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -46,11 +45,10 @@ public class SecurityConfig {
             return configuration;
         }));
 
-
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers("/api/register", "/api/login", "/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

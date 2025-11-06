@@ -45,11 +45,15 @@ public class SecurityConfig {
             return configuration;
         }));
 
-
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/register", "/api/login").permitAll()
+                        .requestMatchers(
+                                "/api/register",
+                                "/api/login",
+                                "/actuator/health",
+                                "/actuator/prometheus"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

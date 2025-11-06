@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-backend
+  namespace: todo-backend
+  labels:
+    app: todo-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-backend
+  template:
+    metadata:
+      labels:
+        app: todo-backend
+    spec:
+      containers:
+        - name: todo-backend
+          image: us-central1-docker.pkg.dev/dev-ops-475910/todo-app-repo-yanushka/todo-backend:latest
+          ports:
+            - containerPort: 5050
+              name: http
+          env:
+            - name: JAVA_OPTS
+              value: "-Xmx512m -Xms256m"
+          envFrom:
+            - secretRef:
+                name: todo-backend-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+          # Removed health checks temporarily
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-backend-service
+  namespace: todo-backend
+  labels:
+    app: todo-backend
+spec:
+  type: LoadBalancer
+  selector:
+    app: todo-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5050
+  sessionAffinity: ClientIP

@@ -31,6 +31,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // ✅ Skip JWT check for health endpoint
+        String path = request.getRequestURI();
+        if (path.equals("/health")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -45,18 +52,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 if (jwtUtil.validateToken(jwt)) {
-                    // Load user from database
                     com.todoapp.model.User user = userRepository.findByUsername(username)
                             .orElseThrow(() -> new RuntimeException("User not found"));
 
-                    // Create UserDetails
                     UserDetails userDetails = User.builder()
                             .username(user.getUsername())
                             .password(user.getPassword())
                             .authorities(new ArrayList<>())
                             .build();
 
-                    // Create authentication token
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -64,7 +68,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     userDetails.getAuthorities()
                             );
 
-                    // Set authentication in security context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
 
                     System.out.println("✅ JWT Authentication successful for user: " + username);

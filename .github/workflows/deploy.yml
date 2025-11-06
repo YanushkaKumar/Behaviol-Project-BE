@@ -7,147 +7,150 @@ on:
       - gke-release
 
 jobs:
+  # ======================================================
+  # 🖥️ VM DEPLOYMENT (For Production / Testing)
+  # ======================================================
   deploy-to-vm:
-  if: github.ref == 'refs/heads/master'
-  runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
 
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Build Spring Boot JAR
-      run: mvn clean package -DskipTests
+      - name: Build Spring Boot JAR
+        run: mvn clean package -DskipTests
 
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Install gcloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
-        install_components: compute
+      - name: Install gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: compute
 
-    - name: Create .env file for VM
-      run: |
-        cat <<EOF > .env
-        SPRING_DATA_MONGODB_URI=${{ secrets.MONGODB_URI }}
-        SPRING_DATA_MONGODB_DATABASE=todoapp
-        JWT_SECRET=${{ secrets.JWT_SECRET }}
-        JWT_EXPIRATION=86400000
-        CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
-        SERVER_PORT=5050
-        EOF
+      - name: Create .env file for VM
+        run: |
+          cat <<EOF > .env
+          SPRING_DATA_MONGODB_URI=${{ secrets.MONGODB_URI }}
+          SPRING_DATA_MONGODB_DATABASE=todoapp
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_EXPIRATION=86400000
+          CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+          SERVER_PORT=5050
+          EOF
 
-    - name: Copy JAR and .env to VM
-  run: |
-    gcloud compute scp target/*.jar \
-      ${{ secrets.GCP_VM_NAME }}:~/todo-backend.jar \
-      --zone=${{ secrets.GCP_VM_ZONE }}
-    
-    gcloud compute scp .env \
-      ${{ secrets.GCP_VM_NAME }}:~/todo-backend.env \
-      --zone=${{ secrets.GCP_VM_ZONE }}
+      - name: Copy JAR and .env to VM
+        run: |
+          gcloud compute scp target/*.jar \
+            ${{ secrets.GCP_VM_NAME }}:~/todo-backend.jar \
+            --zone=${{ secrets.GCP_VM_ZONE }}
 
-    - name: Restart Backend Service with new .env
-      run: |
-    gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
-      --zone=${{ secrets.GCP_VM_ZONE }} \
-      --command="sudo mv ~/todo-backend.jar /opt/myapp/todo-backend.jar && sudo mv ~/todo-backend.env /opt/myapp/.env && sudo systemctl restart todo-backend.service"
+          gcloud compute scp .env \
+            ${{ secrets.GCP_VM_NAME }}:~/todo-backend.env \
+            --zone=${{ secrets.GCP_VM_ZONE }}
 
-# ======================================================
-# ☸️ GKE DEPLOYMENT (Kubernetes)
-# ======================================================
-deploy-to-gke:
-  if: github.ref == 'refs/heads/gke-release'
-  runs-on: ubuntu-latest
+      - name: Restart Backend Service with new .env
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+            --zone=${{ secrets.GCP_VM_ZONE }} \
+            --command="sudo mv ~/todo-backend.jar /opt/myapp/todo-backend.jar && sudo mv ~/todo-backend.env /opt/myapp/.env && sudo systemctl restart todo-backend.service"
 
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+  # ======================================================
+  # ☸️ GKE DEPLOYMENT (Kubernetes)
+  # ======================================================
+  deploy-to-gke:
+    if: github.ref == 'refs/heads/gke-release'
+    runs-on: ubuntu-latest
 
-    - name: Build Spring Boot JAR
-      run: mvn clean package -DskipTests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Authenticate to GCP
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Configure gcloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Build Spring Boot JAR
+        run: mvn clean package -DskipTests
 
-    - name: Configure Docker for Artifact Registry
-      run: |
-        gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Build Docker Image
-      run: |
-        docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} .
-        docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
-          ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
+      - name: Configure gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Push Docker Image to Artifact Registry
-      run: |
-        docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }}
-        docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v4
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} .
+          docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
 
-    - name: Install GKE Auth Plugin
-      run: gcloud components install gke-gcloud-auth-plugin --quiet
+      - name: Push Docker Image to Artifact Registry
+        run: |
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
 
-    - name: Get GKE Credentials
-      run: |
-        gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
-          --zone=${{ secrets.GKE_ZONE }} \
-          --project=${{ secrets.GCP_PROJECT_ID }}
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
 
-    # ✅ Dynamically create the Kubernetes Secret from GitHub Secrets
-    - name: Create or Update Kubernetes Secret
-      run: |
-        kubectl delete secret todo-backend-secret -n todo-backend --ignore-not-found
-        kubectl create secret generic todo-backend-secret \
-          --from-literal=SPRING_DATA_MONGODB_URI='${{ secrets.MONGODB_URI }}' \
-          --from-literal=SPRING_DATA_MONGODB_DATABASE='todoapp' \
-          --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
-          --from-literal=JWT_EXPIRATION='86400000' \
-          --from-literal=CORS_ALLOWED_ORIGINS='${{ secrets.CORS_ALLOWED_ORIGINS }}' \
-          --from-literal=SERVER_PORT='5050' \
-          -n todo-backend
+      - name: Install GKE Auth Plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
 
-    - name: Update Deployment Image
-      run: |
-        kubectl set image deployment/todo-backend \
-          todo-backend=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
-          -n todo-backend
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --zone=${{ secrets.GKE_ZONE }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Wait for Rollout
-      run: kubectl rollout status deployment/todo-backend -n todo-backend
+      - name: Create or Update Kubernetes Secret
+        run: |
+          kubectl delete secret todo-backend-secret -n todo-backend --ignore-not-found
+          kubectl create secret generic todo-backend-secret \
+            --from-literal=SPRING_DATA_MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            --from-literal=SPRING_DATA_MONGODB_DATABASE='todoapp' \
+            --from-literal=JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            --from-literal=JWT_EXPIRATION='86400000' \
+            --from-literal=CORS_ALLOWED_ORIGINS='${{ secrets.CORS_ALLOWED_ORIGINS }}' \
+            --from-literal=SERVER_PORT='5050' \
+            -n todo-backend
 
-    - name: Show Deployment Status
-      run: |
-        kubectl get pods -n todo-backend
-        kubectl get svc -n todo-backend
-        kubectl describe deployment todo-backend -n todo-backend
+      - name: Update Deployment Image
+        run: |
+          kubectl set image deployment/todo-backend \
+            todo-backend=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
+            -n todo-backend
 
-    - name: Get Load Balancer IP
-      run: |
-        echo "=== Load Balancer External IP ==="
-        kubectl get svc todo-backend-service -n todo-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      - name: Wait for Rollout
+        run: kubectl rollout status deployment/todo-backend -n todo-backend
+
+      - name: Show Deployment Status
+        run: |
+          kubectl get pods -n todo-backend
+          kubectl get svc -n todo-backend
+          kubectl describe deployment todo-backend -n todo-backend
+
+      - name: Get Load Balancer IP
+        run: |
+          echo "=== Load Balancer External IP ==="
+          kubectl get svc todo-backend-service -n todo-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'

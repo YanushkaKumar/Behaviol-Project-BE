@@ -52,7 +52,7 @@ jobs:
   # ☸️ GKE DEPLOYMENT (Kubernetes)
   # ======================================================
   deploy-to-gke:
-    if: github.ref == 'refs/heads/gke-relea'
+    if: github.ref == 'refs/heads/gke-release'
     runs-on: ubuntu-latest
 
     steps:

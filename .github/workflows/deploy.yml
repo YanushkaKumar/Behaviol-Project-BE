@@ -85,25 +85,25 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Build Docker Image
         run: |
-          docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} .
-          docker tag us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} \
-            us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:latest
+          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} .
+          docker tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
 
       - name: Push Docker Image to Artifact Registry
         run: |
-          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }}
-          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:latest
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }}
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:latest
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
 
       - name: Get GKE Credentials
         run: |
-          gcloud container clusters get-credentials todo-app-yanushka \
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
             --zone=${{ secrets.GKE_ZONE }} \
             --project=${{ secrets.GCP_PROJECT_ID }}
 
@@ -115,7 +115,7 @@ jobs:
       - name: Deploy to GKE
         run: |
           kubectl set image deployment/todo-backend \
-            todo-backend=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/todo-app-repo-yanushka/todo-backend:${{ github.sha }} \
+            todo-backend=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
             -n todo-backend
 
       - name: Wait for Rollout to Complete

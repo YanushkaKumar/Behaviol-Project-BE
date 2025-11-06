@@ -7,50 +7,46 @@ on:
       - gke-release
 
 jobs:
-  # ======================================================
-  # 🖥️ VM DEPLOYMENT (For Production / Testing)
-  # ======================================================
   deploy-to-vm:
-    if: github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/master'
+  runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: Build Spring Boot JAR
-        run: mvn clean package -DskipTests
+    - name: Build Spring Boot JAR
+      run: mvn clean package -DskipTests
 
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Install gcloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          install_components: compute
-      # ✅ Create an .env file for the VM with secrets
-      - name: Create .env file for VM
-        run: |
-          cat <<EOF > .env
-            SPRING_DATA_MONGODB_URI=${{ secrets.MONGODB_URI }}
-            SPRING_DATA_MONGODB_DATABASE=todoapp
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            JWT_EXPIRATION=86400000
-            CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
-            SERVER_PORT=5050
-            EOF
+    - name: Install gcloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        install_components: compute
 
-# ✅ Copy JAR + .env to VM
-- name: Copy JAR and .env to VM
+    - name: Create .env file for VM
+      run: |
+        cat <<EOF > .env
+        SPRING_DATA_MONGODB_URI=${{ secrets.MONGODB_URI }}
+        SPRING_DATA_MONGODB_DATABASE=todoapp
+        JWT_SECRET=${{ secrets.JWT_SECRET }}
+        JWT_EXPIRATION=86400000
+        CORS_ALLOWED_ORIGINS=${{ secrets.CORS_ALLOWED_ORIGINS }}
+        SERVER_PORT=5050
+        EOF
+
+    - name: Copy JAR and .env to VM
   run: |
     gcloud compute scp target/*.jar \
       ${{ secrets.GCP_VM_NAME }}:~/todo-backend.jar \
@@ -60,13 +56,11 @@ jobs:
       ${{ secrets.GCP_VM_NAME }}:~/todo-backend.env \
       --zone=${{ secrets.GCP_VM_ZONE }}
 
-# ✅ Move files to app directory and restart service
-- name: Restart Backend Service with new .env
-  run: |
+    - name: Restart Backend Service with new .env
+      run: |
     gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
       --zone=${{ secrets.GCP_VM_ZONE }} \
       --command="sudo mv ~/todo-backend.jar /opt/myapp/todo-backend.jar && sudo mv ~/todo-backend.env /opt/myapp/.env && sudo systemctl restart todo-backend.service"
-
 
 # ======================================================
 # ☸️ GKE DEPLOYMENT (Kubernetes)

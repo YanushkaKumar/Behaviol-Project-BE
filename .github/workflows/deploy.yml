@@ -37,7 +37,6 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           install_components: compute
-
       # ✅ Create an .env file for the VM with secrets
       - name: Create .env file for VM
         run: |

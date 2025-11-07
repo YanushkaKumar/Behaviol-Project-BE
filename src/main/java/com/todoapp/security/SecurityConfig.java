@@ -3,7 +3,6 @@ package com.todoapp.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,40 +31,32 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http.cors(cors -> cors.configurationSource(request -> {
-            CorsConfiguration cfg = new CorsConfiguration();
-            cfg.setAllowedOriginPatterns(List.of(
-                    "https://todoappilication.danushka.tech",
+            CorsConfiguration configuration = new CorsConfiguration();
+            configuration.setAllowedOriginPatterns(List.of(
                     "http://localhost:3000",
-                    "*"          // keep while stabilizing; you can tighten later
+                    "https://todoappilication.danushka.tech",
+                    "*"
             ));
-            cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-            cfg.setAllowedHeaders(List.of("*"));
-            cfg.setAllowCredentials(true);
-            cfg.setExposedHeaders(List.of("Authorization"));
-            return cfg;
+            configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+            configuration.setAllowedHeaders(List.of("*"));
+            configuration.setAllowCredentials(true);
+            configuration.setExposedHeaders(List.of("Authorization"));
+            return configuration;
         }));
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Preflight
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Public endpoints
-                        .requestMatchers("/api/login", "/api/register").permitAll()
-                        // Actuator should be public (reached internally as /actuator/**)
-                        .requestMatchers("/actuator/**").permitAll()
-
-                        // Everything under /api/** requires auth
-                        .requestMatchers("/api/**").authenticated()
-
-                        // Do NOT secure Grafana/Prometheus paths (they are served by NGINX, not this app)
-                        .requestMatchers("/grafana/**", "/prometheus/**").permitAll()
-
-                        // any other path (e.g., static) permitted
-                        .anyRequest().permitAll()
+                        .requestMatchers(
+                                "/api/register",
+                                "/api/login",
+                                "/actuator/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
                 )
-                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

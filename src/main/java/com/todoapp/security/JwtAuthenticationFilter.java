@@ -10,13 +10,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+//import org.springframework.security.web.authentication.WebSecurityConfigurerAdapter;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -25,32 +24,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
 
-    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
-
-    // Paths to skip JWT authentication
-    private static final List<String> SKIP_PATHS = List.of(
-            "/api/login",
-            "/api/register",
-            "/actuator/**"
-    );
-
-    private boolean isSkipPath(String path) {
-        return SKIP_PATHS.stream().anyMatch(p -> pathMatcher.match(p, path));
-    }
-
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
-
-        String requestPath = request.getRequestURI();
-
-        // Skip JWT filter for public endpoints
-        if (isSkipPath(requestPath)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         final String authHeader = request.getHeader("Authorization");
 
@@ -66,15 +45,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
                 if (jwtUtil.validateToken(jwt)) {
-                    var user = userRepository.findByUsername(username)
+                    // Load user from database
+                    com.todoapp.model.User user = userRepository.findByUsername(username)
                             .orElseThrow(() -> new RuntimeException("User not found"));
 
+                    // Create UserDetails
                     UserDetails userDetails = User.builder()
                             .username(user.getUsername())
                             .password(user.getPassword())
                             .authorities(new ArrayList<>())
                             .build();
 
+                    // Create authentication token
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -82,7 +64,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     userDetails.getAuthorities()
                             );
 
+                    // Set authentication in security context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    System.out.println("✅ JWT Authentication successful for user: " + username);
                 }
             }
         } catch (Exception e) {

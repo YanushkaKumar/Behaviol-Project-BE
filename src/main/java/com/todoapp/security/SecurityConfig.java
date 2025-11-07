@@ -36,6 +36,7 @@ public class SecurityConfig {
                     "http://localhost:3000",
                     "http://136.119.94.189",
                     "https://136.119.94.189",
+                    "https://todoappilication.danushka.tech",
                     "*"
             ));
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -52,7 +53,8 @@ public class SecurityConfig {
                                 "/api/register",
                                 "/api/login",
                                 "/actuator/health",
-                                "/actuator/prometheus"
+                                "/actuator/**",
+                                "/api/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

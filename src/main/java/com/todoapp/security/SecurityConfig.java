@@ -34,9 +34,8 @@ public class SecurityConfig {
             CorsConfiguration configuration = new CorsConfiguration();
             configuration.setAllowedOriginPatterns(List.of(
                     "http://localhost:3000",
-                    "http://34.136.62.200",
-                    "https://34.136.62.200",
-                    "*"
+                    "https://34.136.176.12",
+                    "http://34.136.176.12"  // ✅ Frontend LoadBalancer IP
             ));
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
             configuration.setAllowedHeaders(List.of("*"));

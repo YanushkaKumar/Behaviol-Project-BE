@@ -50,7 +50,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/register", "/api/login").permitAll()
-                        .requestMatchers("/actuator/prometheus").permitAll()   // ✅ Allow Prometheus metrics
+                        .requestMatchers("/actuator/health", "/actuator/**").permitAll()   // ✅ allow all actuator endpoints
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

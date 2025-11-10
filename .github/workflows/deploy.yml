@@ -114,7 +114,7 @@ jobs:
             --zone=${{ secrets.GKE_ZONE }} \
             --project=${{ secrets.GCP_PROJECT_ID }}
 
-      # ✅ Create Kubernetes Secret for the Backend
+      # --- App secrets (env) ---
       - name: Create or Update Kubernetes Secret
         run: |
           kubectl delete secret todo-backend-secret -n todo-backend --ignore-not-found
@@ -127,28 +127,66 @@ jobs:
             --from-literal=SERVER_PORT='5050' \
             -n todo-backend
 
+      # --- Ensure Service & BackendConfig are correct each run ---
+      - name: Apply BackendConfig & Service
+        run: |
+          kubectl apply -f k8s/04-backendconfig.yaml
+          kubectl apply -f k8s/backend-service.yaml
+
+      # --- Update the image ---
       - name: Update Deployment Image
         run: |
           kubectl set image deployment/todo-backend \
             todo-backend=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REPO_NAME }}/todo-backend:${{ github.sha }} \
             -n todo-backend
 
-      - name: Wait for Rollout
-        run: kubectl rollout status deployment/todo-backend -n todo-backend
+      # --- Time-boxed rollout + rollback on failure ---
+      - name: Wait for Rollout (max 3 min, with rollback)
+        run: |
+          set +e
+          kubectl rollout status deployment/todo-backend -n todo-backend --timeout=180s
+          RC=$?
+          if [ $RC -ne 0 ]; then
+            echo "❌ Rollout failed, printing describe:"
+            kubectl describe deployment todo-backend -n todo-backend || true
+            echo "Undoing rollout..."
+            kubectl rollout undo deployment/todo-backend -n todo-backend
+            exit 1
+          fi
+          set -e
 
-      # ✅ NEW: Print Ingress Host + IP
+      # --- Show Ingress host + IP ---
       - name: Get Ingress Endpoint
         run: |
-          echo "=== Ingress Hosted Domain ==="
-          kubectl get ingress todo-app-ingress -n todo-backend \
-          -o jsonpath='{.spec.rules[0].host}{"\n"}'
-
+          echo "=== Ingress Host ==="
+          kubectl get ingress todo-app-ingress -n todo-backend -o jsonpath='{.spec.rules[0].host}{"\n"}'
           echo "=== Ingress External IP ==="
-          kubectl get ingress todo-app-ingress -n todo-backend \
-          -o jsonpath='{.status.loadBalancer.ingress[0].ip}{"\n"}'
+          kubectl get ingress todo-app-ingress -n todo-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}{"\n"}'
 
-      # 🧪 Optional: Test endpoint after deployment
-      - name: Test Health Endpoint
+      # --- Health check via Ingress (HTTP) with retries ---
+      - name: Test Health via Ingress (retries)
+        env:
+          DOMAIN: ${{ secrets.DOMAIN }} # set to todoappilicationvm.danushka.tech
         run: |
-          echo "Testing /actuator/health ..."
-          curl -I "http://${{ secrets.DOMAIN }}/api/actuator/health"
+          set -e
+          ATTEMPTS=12
+          SLEEP=10
+          OK=0
+          echo "Probing http://$DOMAIN/api/actuator/health"
+          for i in $(seq 1 $ATTEMPTS); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$DOMAIN/api/actuator/health" || true)
+            echo "Attempt $i: HTTP $CODE"
+            if [ "$CODE" = "200" ]; then
+              OK=1
+              break
+            fi
+            sleep $SLEEP
+          done
+          if [ "$OK" -ne 1 ]; then
+            echo "❌ Ingress health still not 200 after $((ATTEMPTS*SLEEP))s"
+            echo "Dumping ingress and svc:"
+            kubectl describe ingress todo-app-ingress -n todo-backend || true
+            kubectl get svc todo-backend-service -n todo-backend -o yaml || true
+            exit 1
+          fi
+          echo "✅ Ingress health OK"

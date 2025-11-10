@@ -166,27 +166,26 @@ jobs:
       # --- Health check via Ingress (HTTP) with retries ---
       - name: Test Health via Ingress (retries)
         env:
-          DOMAIN: ${{ secrets.DOMAIN }} # set to todoappilicationvm.danushka.tech
-        run: |
-          set -e
-          ATTEMPTS=12
-          SLEEP=10
-          OK=0
-          echo "Probing http://$DOMAIN/api/actuator/health"
-          for i in $(seq 1 $ATTEMPTS); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$DOMAIN/api/actuator/health" || true)
-            echo "Attempt $i: HTTP $CODE"
-            if [ "$CODE" = "200" ]; then
-              OK=1
-              break
-            fi
-            sleep $SLEEP
-          done
-          if [ "$OK" -ne 1 ]; then
-            echo "❌ Ingress health still not 200 after $((ATTEMPTS*SLEEP))s"
-            echo "Dumping ingress and svc:"
-            kubectl describe ingress todo-app-ingress -n todo-backend || true
-            kubectl get svc todo-backend-service -n todo-backend -o yaml || true
-            exit 1
-          fi
-          echo "✅ Ingress health OK"
+          - name: Test Health via Ingress (retries)
+            run: |
+              DOMAIN="todoappilicationvm.danushka.tech"
+              echo "Probing http://$DOMAIN/api/actuator/health"
+              ATTEMPTS=12
+              SLEEP=10
+              OK=0
+              for i in $(seq 1 $ATTEMPTS); do
+                CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://$DOMAIN/api/actuator/health" || true)
+                echo "Attempt $i: HTTP $CODE"
+                if [ "$CODE" = "200" ]; then
+                  OK=1
+                  break
+                fi
+                sleep $SLEEP
+              done
+              if [ "$OK" -ne 1 ]; then
+                echo "❌ Ingress is not returning 200 even after $((ATTEMPTS*SLEEP)) seconds"
+                kubectl describe ingress todo-app-ingress -n todo-backend || true
+                kubectl get svc todo-backend-service -n todo-backend -o yaml || true
+                exit 1
+              fi
+              echo "✅ Ingress health OK"

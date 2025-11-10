@@ -114,7 +114,7 @@ jobs:
             --zone=${{ secrets.GKE_ZONE }} \
             --project=${{ secrets.GCP_PROJECT_ID }}
 
-      # ✅ Dynamically create the Kubernetes Secret from GitHub Secrets
+      # ✅ Create Kubernetes Secret for the Backend
       - name: Create or Update Kubernetes Secret
         run: |
           kubectl delete secret todo-backend-secret -n todo-backend --ignore-not-found
@@ -136,13 +136,19 @@ jobs:
       - name: Wait for Rollout
         run: kubectl rollout status deployment/todo-backend -n todo-backend
 
-      - name: Show Deployment Status
+      # ✅ NEW: Print Ingress Host + IP
+      - name: Get Ingress Endpoint
         run: |
-          kubectl get pods -n todo-backend
-          kubectl get svc -n todo-backend
-          kubectl describe deployment todo-backend -n todo-backend
+          echo "=== Ingress Hosted Domain ==="
+          kubectl get ingress todo-app-ingress -n todo-backend \
+          -o jsonpath='{.spec.rules[0].host}{"\n"}'
 
-      - name: Get Load Balancer IP
+          echo "=== Ingress External IP ==="
+          kubectl get ingress todo-app-ingress -n todo-backend \
+          -o jsonpath='{.status.loadBalancer.ingress[0].ip}{"\n"}'
+
+      # 🧪 Optional: Test endpoint after deployment
+      - name: Test Health Endpoint
         run: |
-          echo "=== Load Balancer External IP ==="
-          kubectl get svc todo-backend-service -n todo-backend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+          echo "Testing /actuator/health ..."
+          curl -I "http://${{ secrets.DOMAIN }}/api/actuator/health"

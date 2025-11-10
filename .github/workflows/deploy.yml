@@ -8,12 +8,11 @@ on:
 
 jobs:
   # ======================================================
-  # 🖥️ VM Deployment (Master Branch)
+  # 🖥️ VM Deployment (master)
   # ======================================================
   deploy-to-vm:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,14 +57,12 @@ jobs:
               echo 'Deployment complete!'; \
               sudo systemctl --no-pager --full status todo-backend.service"
 
-
   # ======================================================
-  # ☸️ GKE Deployment (gke-release Branch)
+  # ☸️ Backend → GKE Deployment (gke-release)
   # ======================================================
   deploy-to-gke:
     if: github.ref == 'refs/heads/gke-release'
     runs-on: ubuntu-latest
-
     steps:
       - name: ✅ Checkout Code
         uses: actions/checkout@v4
@@ -134,14 +131,17 @@ jobs:
         run: |
           kubectl rollout status deployment/todo-backend -n todo-backend --timeout=180s
 
-      - name: 🔍 Test Health Inside Cluster (No Ingress)
+      # ---- HEALTH CHECK FROM FRONTEND POD (has curl) ----
+      - name: 🔍 Test Internal Health (from frontend pod)
         run: |
-          echo "Testing internal service http://todo-backend-service:5050/actuator/health"
-          kubectl exec deploy/todo-backend -n todo-backend -- \
-          curl -m 5 -s -o /dev/null -w "%{http_code}\n" http://localhost:5050/actuator/health
+          set -e
+          POD=$(kubectl get pod -n todo-backend -l app=todo-frontend -o jsonpath='{.items[0].metadata.name}')
+          echo "Using pod: $POD"
+          kubectl exec -n todo-backend "$POD" -- \
+            curl -m 8 -s -o /dev/null -w "%{http_code}\n" http://todo-backend-service:5050/actuator/health
 
       - name: ✅ Print Status Summary
         run: |
-          kubectl get pods -n todo-backend
+          kubectl get pods -n todo-backend -o wide
           kubectl get svc -n todo-backend
           kubectl get ingress -n todo-backend

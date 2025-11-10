@@ -34,10 +34,11 @@ public class SecurityConfig {
             CorsConfiguration configuration = new CorsConfiguration();
             configuration.setAllowedOriginPatterns(List.of(
                     "http://localhost:3000",
-                    "http://34.136.62.200",
+                    "http://34.49.204.203",
                     "https://34.136.62.200",
                     "http://34.136.176.12",
-                    "https://34.136.176.12"
+                    "https://todoappilicationvm.danushka.tech",
+                    "https://34.49.204.203"
             ));
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
             configuration.setAllowedHeaders(List.of("*"));

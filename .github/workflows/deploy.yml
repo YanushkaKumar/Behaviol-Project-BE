@@ -137,8 +137,8 @@ jobs:
       - name: 🔍 Test Health Inside Cluster (No Ingress)
         run: |
           echo "Testing internal service http://todo-backend-service:5050/actuator/health"
-          kubectl run tmp-test --rm -i --restart=Never --image=curlimages/curl -n todo-backend -- \
-            curl -s -o /dev/null -w "%{http_code}" http://todo-backend-service:5050/actuator/health
+          kubectl exec deploy/todo-backend -n todo-backend -- \
+          curl -m 5 -s -o /dev/null -w "%{http_code}\n" http://localhost:5050/actuator/health
 
       - name: ✅ Print Status Summary
         run: |

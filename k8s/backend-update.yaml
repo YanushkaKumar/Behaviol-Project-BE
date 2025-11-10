@@ -34,7 +34,6 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "250m"
-          # Removed health checks temporarily
 ---
 apiVersion: v1
 kind: Service
@@ -44,11 +43,10 @@ metadata:
   labels:
     app: todo-backend
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: todo-backend
   ports:
     - protocol: TCP
-      port: 80
+      port: 5050
       targetPort: 5050
-  sessionAffinity: ClientIP

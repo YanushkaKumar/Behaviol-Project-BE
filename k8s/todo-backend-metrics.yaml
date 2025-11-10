@@ -5,6 +5,7 @@ metadata:
   namespace: todo-backend
   labels:
     app: todo-backend
+    release: kube-prometheus   # IMPORTANT: Prometheus Operator looks for this
 spec:
   selector:
     app: todo-backend

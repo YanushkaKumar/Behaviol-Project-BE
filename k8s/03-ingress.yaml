@@ -4,11 +4,9 @@ metadata:
   name: todo-app-ingress
   namespace: todo-backend
   annotations:
-    kubernetes.io/ingress.class: "gce"
-    networking.gke.io/managed-certificates: "todoapp-managed-cert"
-    kubernetes.io/ingress.allow-http: "true"
+    kubernetes.io/ingress.class: gce
+    networking.gke.io/managed-certificates: todoapp-managed-cert
 spec:
-  ingressClassName: gce
   rules:
     - host: todoappilicationvm.danushka.tech
       http:

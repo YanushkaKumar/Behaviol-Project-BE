@@ -3,16 +3,14 @@ kind: Service
 metadata:
   name: todo-backend-service
   namespace: todo-backend
-  labels:
-    app: todo-backend
   annotations:
     cloud.google.com/backend-config: '{"default":"todo-backend-config"}'
     cloud.google.com/neg: '{"ingress": true}'
 spec:
-  type: NodePort               # Required for GKE Standard + GCE Ingress
+  type: NodePort
   selector:
     app: todo-backend
   ports:
-    - protocol: TCP
-      port: 5050
+    - port: 5050
       targetPort: 5050
+      protocol: TCP

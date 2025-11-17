@@ -32,17 +32,21 @@ public class SecurityConfig {
 
         http.cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration configuration = new CorsConfiguration();
-            configuration.setAllowedOriginPatterns(List.of(
+
+            configuration.setAllowedOrigins(List.of(
                     "http://localhost:3000",
                     "https://todoappilication.danushka.tech",
-                    "*"
+                    "https://136.110.155.113"   // Optional: LB IP
             ));
+
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
             configuration.setAllowedHeaders(List.of("*"));
             configuration.setAllowCredentials(true);
             configuration.setExposedHeaders(List.of("Authorization"));
+
             return configuration;
         }));
+
 
         http
                 .csrf(AbstractHttpConfigurer::disable)

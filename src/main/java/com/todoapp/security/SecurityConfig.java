@@ -36,7 +36,8 @@ public class SecurityConfig {
             configuration.setAllowedOrigins(List.of(
                     "http://localhost:3000",
                     "https://todoappilication.danushka.tech",
-                    "https://136.110.155.113"   // Optional: LB IP
+                    "https://136.110.155.113",
+                    "http://136.119.94.189"        // <--- You missed this domain
             ));
 
             configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));

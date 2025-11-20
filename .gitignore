@@ -30,6 +30,6 @@ target/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-k8s/todo-secret.yaml
+k8s/todo-backend-secret.yaml
 ### VS Code ###
 .vscode/

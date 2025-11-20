@@ -61,7 +61,7 @@ jobs:
   # ☸️ Backend → GKE Deployment (gke-release)
   # ======================================================
   deploy-to-gke:
-    if: github.ref == 'refs/heads/gke-release'
+    if: github.ref == 'refs/heads/gke-relse'
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Checkout Code
